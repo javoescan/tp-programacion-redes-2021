@@ -10,6 +10,18 @@
 #include <time.h>
 #include <pthread.h>
 
+typedef struct request_attributes t_request_attributes;
+struct request_attributes {
+	int connfd;						
+};
+
+void *handleRequest (void *params) {
+  t_request_attributes *attributes = (t_request_attributes*) params;
+  printf("Conexion establecida en socket %d\n", attributes->connfd);
+  close(attributes->connfd);
+	pthread_exit ((void *)"Cerrando hilo");
+}
+
 int main(int argc, char * argv[]) {
   if (argc < 3) { 
     printf("Comandos insuficientes");
@@ -44,10 +56,21 @@ int main(int argc, char * argv[]) {
     connfd = accept(listenfd, (struct sockaddr*)NULL, NULL);
         
     if(connfd < 0) {
-      // controlo error
+      printf("Error al aceptar conexion");
+      exit (1);
     }
-    
-    printf("Connection established on socket %d\n", connfd);
-    close(connfd);
+    pthread_t thread;
+    pthread_attr_t 	attributes;
+
+    pthread_attr_init (&attributes);
+    pthread_attr_setdetachstate (&attributes, PTHREAD_CREATE_JOINABLE);
+
+    t_request_attributes* cxAttributes = malloc(sizeof(t_request_attributes));
+    cxAttributes->connfd = connfd;
+
+    pthread_create(&thread, &attributes, handleRequest, cxAttributes);
+    // pthread_join(thread, NULL);
   }
+
+  return 0;
 }
