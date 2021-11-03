@@ -9,6 +9,10 @@
 #include <sys/types.h>
 #include <time.h>
 #include <pthread.h>
+#include <sys/sendfile.h>
+#include <fcntl.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 
 typedef struct request_attributes t_request_attributes;
 struct request_attributes {
@@ -19,27 +23,15 @@ void *handleRequest (void *params) {
   t_request_attributes *attributes = (t_request_attributes*) params;
   printf("Conexion establecida en socket %d\n", attributes->connfd);
 
-  FILE *pictureFile;
-  pictureFile = fopen("image.png", "r");
-  char * fbuffer = 0;
-  long length;
-
-  fseek (pictureFile, 0, SEEK_END);
-  length = ftell(pictureFile);
-  fseek (pictureFile, 0, SEEK_SET);
-  fbuffer = malloc(length);
-  int total = 0;
-  while (total != length) {
-    total += fread(fbuffer, 1, length, pictureFile);
-  }
+  const char *fromfile = "image.png";
+  struct stat stat_buf;
+  int fromfd = open(fromfile, O_RDONLY);
+  fstat(fromfd, &stat_buf);
   char response[20048];
-  int hlen;
-
-  hlen = snprintf(response, sizeof(response),
-      "HTTP/1.1 200 OK\nContent-Type: %s\nContent-Length: %d\n\n", "image/png", length);
-  memcpy(response + hlen, fbuffer, length);
-
-  send(attributes->connfd, response, hlen + length, 0);
+  snprintf(response, sizeof(response),
+      "HTTP/1.1 200 OK\nContent-Type: %s\nContent-Length: %ld\n\n", "image/png", stat_buf.st_size);
+  send(attributes->connfd, response, strlen(response), 0);
+  sendfile(attributes->connfd, fromfd, 0, stat_buf.st_size);
   close(attributes->connfd);
 	pthread_exit ((void *)"Cerrando hilo");
 }
