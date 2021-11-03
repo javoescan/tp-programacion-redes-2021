@@ -18,6 +18,28 @@ struct request_attributes {
 void *handleRequest (void *params) {
   t_request_attributes *attributes = (t_request_attributes*) params;
   printf("Conexion establecida en socket %d\n", attributes->connfd);
+
+  FILE *pictureFile;
+  pictureFile = fopen("image.png", "r");
+  char * fbuffer = 0;
+  long length;
+
+  fseek (pictureFile, 0, SEEK_END);
+  length = ftell(pictureFile);
+  fseek (pictureFile, 0, SEEK_SET);
+  fbuffer = malloc(length);
+  int total = 0;
+  while (total != length) {
+    total += fread(fbuffer, 1, length, pictureFile);
+  }
+  char response[20048];
+  int hlen;
+
+  hlen = snprintf(response, sizeof(response),
+      "HTTP/1.1 200 OK\nContent-Type: %s\nContent-Length: %d\n\n", "image/png", length);
+  memcpy(response + hlen, fbuffer, length);
+
+  send(attributes->connfd, response, hlen + length, 0);
   close(attributes->connfd);
 	pthread_exit ((void *)"Cerrando hilo");
 }
@@ -69,7 +91,6 @@ int main(int argc, char * argv[]) {
     cxAttributes->connfd = connfd;
 
     pthread_create(&thread, &attributes, handleRequest, cxAttributes);
-    // pthread_join(thread, NULL);
   }
 
   return 0;
