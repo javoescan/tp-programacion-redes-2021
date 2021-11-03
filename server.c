@@ -13,6 +13,7 @@
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include "threadpool.h"
 
 typedef struct request_attributes t_request_attributes;
 struct request_attributes {
@@ -64,6 +65,8 @@ int main(int argc, char * argv[]) {
 
   listen(listenfd, 10);
   
+  threadpool_t *pool = threadpool_create(5, 100, 0);
+
   printf("Server running on %s:%d...\n", address, port);
   
   while(1) {
@@ -73,16 +76,10 @@ int main(int argc, char * argv[]) {
       printf("Error al aceptar conexion");
       exit (1);
     }
-    pthread_t thread;
-    pthread_attr_t 	attributes;
-
-    pthread_attr_init (&attributes);
-    pthread_attr_setdetachstate (&attributes, PTHREAD_CREATE_JOINABLE);
-
     t_request_attributes* cxAttributes = malloc(sizeof(t_request_attributes));
     cxAttributes->connfd = connfd;
 
-    pthread_create(&thread, &attributes, handleRequest, cxAttributes);
+    threadpool_add(pool, &handleRequest, cxAttributes, 0);
   }
 
   return 0;
