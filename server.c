@@ -34,7 +34,6 @@ void *handleRequest (void *params) {
   send(attributes->connfd, response, strlen(response), 0);
   sendfile(attributes->connfd, fromfd, 0, stat_buf.st_size);
   close(attributes->connfd);
-	pthread_exit ((void *)"Cerrando hilo");
 }
 
 int main(int argc, char * argv[]) {
@@ -82,5 +81,6 @@ int main(int argc, char * argv[]) {
     threadpool_add(pool, &handleRequest, cxAttributes, 0);
   }
 
+  threadpool_destroy(pool, 0);
   return 0;
 }
